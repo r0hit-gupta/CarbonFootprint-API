@@ -61,7 +61,7 @@
       "region" : "France",
       "category" : "transport",
       "method" : "simple",
-        "quantity" : [1],
+      "quantity" : [1],
       "unit" : "kg/km",
       "M.F.(multiply factor)" : 426
     },
@@ -198,3 +198,4 @@
       "M.F.(multiply factor)" : 1225
     }
 }
+
