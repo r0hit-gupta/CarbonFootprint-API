@@ -5,7 +5,11 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-
+var passport = require('passport');  
+var LocalStrategy = require('passport-local').Strategy;
+var flash = require('connect-flash');  
+var session = require('express-session');
+var passportConfig = require('./auth/config/passport')
 // database setup
 var mongoose = require('mongoose');
 // get the database configuration file
@@ -36,12 +40,27 @@ mongoose.connection.on('disconnected', () => {
   console.log('Database disconnected'); 
 });
 
+passportConfig(passport);
+
+var sess = {
+    secret: 'carbonFootprint',
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+        maxAge:60000
+    }
+}
+
+
 // get different routes required
-var index = require('./routes/index')
+var index = require('./routes/index');
+var main = require('./routes/main');
 var emissions = require('./api/v1/routes/emissionRoutes');
 var dashboard = require('./routes/dashboard');
 var electricity = require('./routes/electricity');
+var authRoute = require('./auth/routes/index');
 var app = express();
+
 app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
@@ -57,23 +76,28 @@ app.use((req, res, next) => {
 });
 
 // uncomment after placing your favicon in /public
-//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+app.use(favicon(path.join(__dirname, 'client/public/img', 'favicon.ico')));
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-
+app.use(express.static(path.join(__dirname, 'client/public')));
+app.use(session(sess));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(flash());
 //routes for api v1
-v1 = express.Router();
+var v1 = express.Router();
 v1.use('/', emissions);
 
 // Use v1 router for all the API requests adhering to version 1
 app.use('/v1', v1);
 // show the API dashboard
 app.use('/', index);
+app.use('/main',main);
 app.use('/dashboard', dashboard);
 app.use('/electricity',electricity);
+app.use('/auth',authRoute);
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
@@ -87,7 +111,6 @@ app.use((err, req, res, next) => {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
-
   // render the error page
   res.status(err.status || 500);
   res.render('error');
